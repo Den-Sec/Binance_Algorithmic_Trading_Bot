@@ -1,0 +1,12 @@
+python-binance
+pandas
+numpy
+python-dotenv
+
+"""
+Packages Explained:
+python-binance: The Binance API client library.
+pandas: Used for data manipulation and analysis.
+numpy: Supports numerical operations.
+python-dotenv: Loads environment variables from a .env file
+"""
