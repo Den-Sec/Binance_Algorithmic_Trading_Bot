@@ -1,6 +1,6 @@
 # Binance Algorithmic Trading Bot
 
-This is a Python-based algorithmic trading bot that uses the Binance API to execute trades based on the **Moving Average Convergence Divergence (MACD)** indicator.
+This is a Python-based algorithmic trading bot that uses the Binance API to execute trades based on technical indicators such as **Moving Average Convergence Divergence (MACD)**, **Relative Strength Index (RSI)**, and **Average Directional Index (ADX)**.
 
 ## Table of Contents
 
@@ -9,12 +9,12 @@ This is a Python-based algorithmic trading bot that uses the Binance API to exec
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Install Dependencies](#2-install-dependencies)
   - [3. Set Up the `.env` File](#3-set-up-the-env-file)
-- [Understanding Funds and Trading Operations](#understanding-funds-and-trading-operations)
 - [Running the Bot](#running-the-bot)
 - [Code Overview](#code-overview)
 - [Important Notes](#important-notes)
 - [Usage Guide](#usage-guide)
   - [Step-by-Step Instructions](#step-by-step-instructions)
+- [Performance Metrics](#performance-metrics)
 - [Additional Tips](#additional-tips)
 - [Disclaimer](#disclaimer)
 
@@ -25,6 +25,7 @@ This is a Python-based algorithmic trading bot that uses the Binance API to exec
 - **Python 3.7** or higher
 - A **Binance account** with API access
 - Basic knowledge of **Python** and trading concepts
+- Installed **Docker** if you wish to run the bot inside a container
 
 ## Setup Instructions
 
@@ -53,69 +54,34 @@ BINANCE_API_SECRET=your_api_secret
 
 # Optional configurations (default values are shown)
 SYMBOL=BTCUSDT
-TRADE_QUANTITY=0.001
-INTERVAL=1m
-MACD_FAST=12
-MACD_SLOW=26
-MACD_SIGNAL=9
+INTERVAL=15m
+MACD_FAST_TRENDING=12
+MACD_SLOW_TRENDING=26
+MACD_SIGNAL_TRENDING=9
+RSI_PERIOD_TRENDING=14
+STOP_LOSS_PERCENTAGE_TRENDING=0.03
+TAKE_PROFIT_PERCENTAGE_TRENDING=0.1
+TRAILING_STOP_PERCENTAGE_TRENDING=0.03
+
+MACD_FAST_RANGING=12
+MACD_SLOW_RANGING=26
+MACD_SIGNAL_RANGING=9
+RSI_PERIOD_RANGING=14
+STOP_LOSS_PERCENTAGE_RANGING=0.02
+TAKE_PROFIT_PERCENTAGE_RANGING=0.05
+TRAILING_STOP_PERCENTAGE_RANGING=0.02
+
+RISK_PER_TRADE=0.01
 ```
 
 - **BINANCE_API_KEY**: Your Binance API key.
 - **BINANCE_API_SECRET**: Your Binance API secret.
-
-### **Optional Configurations Explained**
-
 - **SYMBOL**: The trading pair symbol (e.g., `BTCUSDT`).
-
-  - **Default**: `BTCUSDT`
-  - **Description**: Specifies the cryptocurrency pair to trade.
-
-- **TRADE_QUANTITY**: The amount to trade per transaction.
-
-  - **Default**: `0.001`
-  - **Description**: Amount of the base asset to buy or sell in each trade.
-
-- **INTERVAL**: Candlestick interval (e.g., `1m`, `5m`, `1h`).
-
-  - **Default**: `1m`
-  - **Description**: Timeframe for market data analysis.
-
-- **MACD_FAST**: Fast EMA period for MACD.
-
-  - **Default**: `12`
-  - **Description**: Number of periods for the fast moving average.
-
-- **MACD_SLOW**: Slow EMA period for MACD.
-
-  - **Default**: `26`
-  - **Description**: Number of periods for the slow moving average.
-
-- **MACD_SIGNAL**: Signal line EMA period for MACD.
-
-  - **Default**: `9`
-  - **Description**: Number of periods for the signal line moving average.
+- **INTERVAL**: Candlestick interval (e.g., `15m`, `1h`).
+- **MACD/RSI Parameters**: These control the calculations for technical indicators in trending and ranging markets.
+- **RISK_PER_TRADE**: Percentage of the total balance to risk per trade.
 
 > **Important**: Keep your `.env` file secure and never share it or commit it to version control.
-
----
-
-## Understanding Funds and Trading Operations
-
-### **Source of Funds**
-
-- The bot uses funds from your **Binance Spot Wallet** associated with your API keys.
-
-### **What Does the Bot Trade?**
-
-- Trades the cryptocurrency pair specified in `SYMBOL` (default is `BTCUSDT`).
-
-### **How Does the Bot Use Funds?**
-
-- **Buying**: Uses the quote asset (e.g., USDT) to buy the base asset (e.g., BTC).
-
-- **Selling**: Sells the base asset back into the quote asset.
-
-- **Trade Quantity**: Determined by `TRADE_QUANTITY`, which specifies how much of the base asset to trade per transaction.
 
 ---
 
@@ -127,7 +93,7 @@ Run the trading bot using the following command:
 python trading_bot.py
 ```
 
-The bot will start executing and will log its activities to `trading_bot.log`.
+The bot will start executing and will log its activities to `main_log.json` and `trade_log.json`.
 
 ---
 
@@ -139,21 +105,23 @@ The bot will start executing and will log its activities to `trading_bot.log`.
   - `os`, `asyncio`, `logging`, `datetime`, `pandas`, `numpy`: Standard libraries and data handling.
   - `binance`: Binance API client for asynchronous operations.
   - `dotenv`: Loads environment variables from the `.env` file.
+  - `pythonjsonlogger`: Handles JSON formatted logging.
 
 - **Configuration**:
   - Loads environment variables and sets default values if not provided.
-  - Configures logging to record events to `trading_bot.log`.
+  - Configures two types of logging: `main_log.json` for general events and `trade_log.json` for trade-specific events.
 
 - **Functions**:
   - `get_historical_data`: Fetches historical candlestick data from Binance.
-  - `calculate_macd`: Calculates the MACD and Signal Line indicators.
-  - `generate_signals`: Generates buy/sell signals based on MACD crossover.
+  - `calculate_macd`, `calculate_rsi`, `calculate_adx`: Calculate MACD, RSI, and ADX indicators.
+  - `generate_signals`: Generates buy/sell signals based on MACD crossover and RSI levels.
   - `execute_trade`: Executes buy or sell orders on Binance.
+  - `get_time_until_next_candle`: Calculates the time until the next candle forms.
 
 - **Main Loop (`main` function)**:
   - Initializes the Binance client using API keys.
-  - Continuously fetches data, calculates indicators, generates signals, and executes trades.
-  - Handles exceptions and ensures the client connection is properly closed.
+  - Continuously fetches data, calculates indicators, generates signals, and executes trades based on the current market condition (trending or ranging).
+  - Implements stop-loss, take-profit, and trailing stop mechanisms to manage risks.
 
 ---
 
@@ -165,11 +133,11 @@ The bot will start executing and will log its activities to `trading_bot.log`.
   client = await AsyncClient.create(api_key, api_secret, testnet=True)
   ```
 
-- **Risk Management**: Adjust the `TRADE_QUANTITY` and other parameters according to your risk tolerance.
+- **Risk Management**: Adjust the `RISK_PER_TRADE` and other parameters according to your risk tolerance.
 
 - **Security**: Ensure your API keys have appropriate permissions and are stored securely.
 
-- **Logging**: Check `trading_bot.log` for detailed logs of the bot's activities.
+- **Logging**: Check `main_log.json` and `trade_log.json` for detailed logs of the bot's activities.
 
 ---
 
@@ -204,7 +172,6 @@ The bot will start executing and will log its activities to `trading_bot.log`.
 4. **Ensure Sufficient Funds**
 
    - **For Buying**: Have enough of the quote asset (e.g., USDT) to buy the base asset.
-
    - **For Selling**: Have enough of the base asset (e.g., BTC) to sell.
 
 5. **Run the Trading Bot**
@@ -215,22 +182,27 @@ The bot will start executing and will log its activities to `trading_bot.log`.
      python trading_bot.py
      ```
 
-   - Monitor the console output and the `trading_bot.log` file for activity.
+   - Monitor the console output and the log files for activity.
 
-6. **Monitoring and Logs**
-
-   - The bot logs detailed information about its operations.
-   - Check `trading_bot.log` regularly to monitor performance and troubleshoot issues.
-
-7. **Stopping the Bot**
+6. **Stopping the Bot**
 
    - To stop the bot, interrupt the process (e.g., press `Ctrl+C` in the terminal).
 
 ---
 
+## Performance Metrics
+
+- **Total Trades**: The total number of trades executed.
+- **Profitable Trades**: The number of trades that were profitable.
+- **Success Rate**: Percentage of profitable trades relative to the total number of trades.
+
+The bot continuously tracks these metrics and logs them to `main_log.json` for review.
+
+---
+
 ## Additional Tips
 
-- **Customizing the Strategy**: Feel free to modify the `calculate_macd` and `generate_signals` functions in `trading_bot.py` to implement different trading strategies.
+- **Customizing the Strategy**: Feel free to modify the `calculate_macd`, `calculate_rsi`, and `generate_signals` functions to implement different trading strategies.
 
 - **Backtesting**: Before deploying the bot with real funds, consider backtesting the strategy using historical data to assess its performance.
 
@@ -243,7 +215,7 @@ The bot will start executing and will log its activities to `trading_bot.log`.
 
 - **Enhancements**:
   - Implement additional indicators or strategies.
-  - Add risk management features like stop-loss and take-profit orders.
+  - Add risk management features like more advanced stop-loss and take-profit mechanisms.
   - Incorporate notifications (e.g., email, SMS) for trade alerts.
 
 ---
@@ -256,8 +228,3 @@ The bot will start executing and will log its activities to `trading_bot.log`.
 
 **If you have any further questions or need assistance, feel free to ask!**
 
----
-
-## Final Notes
-
-By understanding where the bot gets its funds and how it uses them, as well as knowing the purpose of each configuration setting, you'll be better equipped to use the trading bot effectively and safely. Always exercise caution and make sure to test thoroughly before committing real funds.
